@@ -1,145 +1,209 @@
-### 1. **Entity-Relationship Diagram Overview**
 
-Here's an outline of the key entities and relationships:
+### **1. User Management Tables:**
 
-- **Product** ↔ **Product Entry**
-- **Supplier** ↔ **Product Entry** ↔ **Purchase Transaction**
-- **Customer** ↔ **Sale Transaction**
-- **Location** ↔ **Inventory**
-- **Product** ↔ **Inventory** ↔ **Location**
-- **User** ↔ **User Role** ↔ **User Permissions**
-- **Transaction** (General) - encompassing Purchase, Sale, Transfer, and Adjustment Transactions
-- **Analytics and Reports** ↔ **Transactions**
+#### **Users Table**
+This table will store user authentication information and roles.
+```sql
+CREATE TABLE Users (
+    UserID INT PRIMARY KEY AUTO_INCREMENT,
+    UserName VARCHAR(255) NOT NULL,
+    Phone VARCHAR(20),
+    Email VARCHAR(255) UNIQUE NOT NULL,
+    PasswordHash VARCHAR(255) NOT NULL,
+    Role ENUM('Owner', 'Manager', 'Employee', 'Viewer') NOT NULL,
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
 
-### 2. **Table Designs**
+#### **Employees Table**
+This table stores information about employees assigned by the owner or manager.
+```sql
+CREATE TABLE Employees (
+    EmployeeID INT PRIMARY KEY AUTO_INCREMENT,
+    UserID INT,
+    EmployeeName VARCHAR(255) NOT NULL,
+    Designation VARCHAR(100),
+    FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE
+);
+```
 
-#### **Product Table**
-- `ProductID` (PK)
-- `Name`
-- `Description`
-- `Specifications`
-- `SKU`
-- `CategoryID` (FK from `ProductCategory`)
-- `LocationID` (FK from `Location`)
+### **2. Product Management Tables:**
 
-#### **ProductCategory Table**
-- `CategoryID` (PK)
-- `CategoryName`
-- `Description`
+#### **Products Table**
+This table stores the products in the inventory.
+```sql
+CREATE TABLE Products (
+    ProductID INT PRIMARY KEY AUTO_INCREMENT,
+    Name VARCHAR(255) NOT NULL,
+    Description TEXT,
+    Specifications TEXT,
+    SKU VARCHAR(100) UNIQUE,
+    LocationID INT,
+    SupplierID INT,
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (LocationID) REFERENCES Locations(LocationID),
+    FOREIGN KEY (SupplierID) REFERENCES Suppliers(SupplierID)
+);
+```
 
-#### **ProductEntry Table**
-- `EntryID` (PK)
-- `ProductID` (FK from `Product`)
-- `SupplierID` (FK from `Supplier`)
-- `PurchasingPrice`
-- `SellingPrice`
-- `Quantity`
-- `SKU`
-- `LocationID` (FK from `Location`)
+#### **ProductEntries Table**
+This table manages the purchase and sales data related to products.
+```sql
+CREATE TABLE ProductEntries (
+    EntryID INT PRIMARY KEY AUTO_INCREMENT,
+    ProductID INT,
+    PurchasingPrice DECIMAL(10, 2),
+    SellingPrice DECIMAL(10, 2),
+    Quantity INT NOT NULL,
+    SKU VARCHAR(100),
+    LocationID INT,
+    SupplierID INT,
+    EntryType ENUM('Purchase', 'Sale', 'Transfer', 'Adjustment') NOT NULL,
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ProductID) REFERENCES Products(ProductID),
+    FOREIGN KEY (LocationID) REFERENCES Locations(LocationID),
+    FOREIGN KEY (SupplierID) REFERENCES Suppliers(SupplierID)
+);
+```
 
-#### **Supplier Table**
-- `SupplierID` (PK)
-- `SupplierName`
-- `ContactName`
-- `Phone`
-- `Email`
-- `Address`
+### **3. Supplier Management Tables:**
 
-#### **Customer Table**
-- `CustomerID` (PK)
-- `CustomerName`
-- `Phone`
-- `Email`
-- `Address`
+#### **Suppliers Table**
+This table stores information about suppliers.
+```sql
+CREATE TABLE Suppliers (
+    SupplierID INT PRIMARY KEY AUTO_INCREMENT,
+    SupplierName VARCHAR(255) NOT NULL,
+    Contact VARCHAR(20),
+    Address TEXT,
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+### **4. Customer Management Tables:**
+
+#### **Customers Table**
+This table stores information about customers.
+```sql
+CREATE TABLE Customers (
+    CustomerID INT PRIMARY KEY AUTO_INCREMENT,
+    CustomerName VARCHAR(255) NOT NULL,
+    Contact VARCHAR(20),
+    Email VARCHAR(255),
+    Address TEXT,
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+### **5. Inventory Management Tables:**
 
 #### **Inventory Table**
-- `InventoryID` (PK)
-- `ProductID` (FK from `Product`)
-- `QuantityOnHand`
-- `ReorderPoint`
-- `StockLocation` (FK from `Location`)
-- `LocationID` (FK from `Location`)
+This table tracks stock levels and locations.
+```sql
+CREATE TABLE Inventory (
+    InventoryID INT PRIMARY KEY AUTO_INCREMENT,
+    ProductID INT,
+    QuantityOnHand INT NOT NULL,
+    ReorderPoint INT,
+    StockLocation VARCHAR(255),
+    LocationID INT,
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (ProductID) REFERENCES Products(ProductID),
+    FOREIGN KEY (LocationID) REFERENCES Locations(LocationID)
+);
+```
 
-#### **Location Table**
-- `LocationID` (PK)
-- `LocationName`
-- `LocationType` (e.g., Warehouse, Hub, Outlet)
-- `Capacity`
-- `Address`
+### **6. Location Management Tables:**
 
-#### **PurchaseTransaction Table**
-- `PurchaseID` (PK)
-- `SupplierID` (FK from `Supplier`)
-- `OrderID`
-- `Date`
-- `TotalPrice`
-- `LocationID` (FK from `Location`)
-- `DeliveryMode`
-- `DeliveryTime`
+#### **Locations Table**
+This table manages information about various storage locations.
+```sql
+CREATE TABLE Locations (
+    LocationID INT PRIMARY KEY AUTO_INCREMENT,
+    LocationType ENUM('Warehouse', 'Hub', 'Outlet') NOT NULL,
+    LocationName VARCHAR(255),
+    Capacity INT,
+    Allocation INT,
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
 
-#### **SaleTransaction Table**
-- `SaleID` (PK)
-- `CustomerID` (FK from `Customer`)
-- `InvoiceID`
-- `Date`
-- `TotalPrice`
-- `LocationID` (FK from `Location`)
-- `ShippingMode`
-- `ShippingTime`
+### **7. Transaction Tables:**
 
-#### **TransferTransaction Table**
-- `TransferID` (PK)
-- `ProductID` (FK from `Product`)
-- `FromLocationID` (FK from `Location`)
-- `ToLocationID` (FK from `Location`)
-- `Quantity`
-- `ShippingMode`
-- `ShippingTime`
+#### **Transactions Table**
+This table handles all types of transactions (purchases, sales, transfers, adjustments).
+```sql
+CREATE TABLE Transactions (
+    TransactionID INT PRIMARY KEY AUTO_INCREMENT,
+    ProductID INT,
+    SupplierID INT,
+    CustomerID INT,
+    Quantity INT NOT NULL,
+    UnitPrice DECIMAL(10, 2),
+    TotalPrice DECIMAL(10, 2),
+    TransactionType ENUM('Purchase', 'Sale', 'Transfer', 'Adjustment') NOT NULL,
+    LocationID INT,
+    TransactionDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ProductID) REFERENCES Products(ProductID),
+    FOREIGN KEY (SupplierID) REFERENCES Suppliers(SupplierID),
+    FOREIGN KEY (CustomerID) REFERENCES Customers(CustomerID),
+    FOREIGN KEY (LocationID) REFERENCES Locations(LocationID)
+);
+```
 
-#### **AdjustmentTransaction Table**
-- `AdjustmentID` (PK)
-- `ProductID` (FK from `Product`)
-- `LocationID` (FK from `Location`)
-- `AdjustmentType` (e.g., Inventory Audit, Manual Adjustment, Expiration, Damage, Shrinkage)
-- `QuantityAdjusted`
-- `AdjustmentDate`
+### **8. Adjustment Tables:**
 
-#### **User Table**
-- `UserID` (PK)
-- `UserName`
-- `Phone`
-- `Email`
-- `Password` (stored encrypted)
-- `RoleID` (FK from `UserRole`)
+#### **Adjustments Table**
+This table records manual adjustments to the inventory.
+```sql
+CREATE TABLE Adjustments (
+    AdjustmentID INT PRIMARY KEY AUTO_INCREMENT,
+    ProductID INT,
+    Quantity INT NOT NULL,
+    Reason ENUM('Obsoletion', 'Expiration', 'Product Loss') NOT NULL,
+    AdjustmentDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ProductID) REFERENCES Products(ProductID)
+);
+```
 
-#### **UserRole Table**
-- `RoleID` (PK)
-- `RoleName` (e.g., Owner, Manager, Employee, Viewer)
+### **9. Reporting Tables:**
 
-#### **UserPermissions Table**
-- `PermissionID` (PK)
-- `RoleID` (FK from `UserRole`)
-- `PermissionType` (e.g., Manage Users, Execute, Write, Delete, Read)
+#### **Reports Table**
+This table stores generated reports for analysis.
+```sql
+CREATE TABLE Reports (
+    ReportID INT PRIMARY KEY AUTO_INCREMENT,
+    ReportType ENUM('StockLevel', 'Sales', 'Purchases', 'Transfers') NOT NULL,
+    ReportData TEXT,
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
 
-#### **AnalyticsReport Table**
-- `ReportID` (PK)
-- `ReportName`
-- `GeneratedDate`
-- `ReportData` (Blob or JSON)
+### **10. Integration Tables:**
 
-### 3. **Relationships**
-- **Product** has a one-to-many relationship with **ProductEntry**.
-- **Supplier** has a one-to-many relationship with **ProductEntry** and **PurchaseTransaction**.
-- **Customer** has a one-to-many relationship with **SaleTransaction**.
-- **Location** has a one-to-many relationship with **Inventory** and **ProductEntry**.
-- **Product** has a one-to-many relationship with **Inventory**.
-- **UserRole** has a one-to-many relationship with **User** and **UserPermissions**.
-- **Transactions** (Purchase, Sale, Transfer, Adjustment) are linked to **Product**, **Location**, **Supplier**, and **Customer**.
+#### **Integrations Table**
+This table manages integrations with external platforms like accounting software, e-commerce, etc.
+```sql
+CREATE TABLE Integrations (
+    IntegrationID INT PRIMARY KEY AUTO_INCREMENT,
+    PlatformName VARCHAR(255) NOT NULL,
+    IntegrationData TEXT,
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
 
-### 4. **Additional Notes**
-- **Indexes**: You might consider adding indexes to commonly queried fields like `ProductID`, `SupplierID`, `CustomerID`, and `LocationID` for better performance.
-- **Constraints**: Implement foreign key constraints to maintain referential integrity between related tables.
-- **Normalization**: Ensure the data is normalized to at least the third normal form (3NF) to reduce redundancy.
-- **Security**: Encrypt sensitive fields like passwords and ensure role-based access controls are enforced through the `UserPermissions` table.
+### **Database Relationships:**
+- **Users** and **Employees**: Each user can have multiple employees.
+- **Products**: Connected to **Suppliers** and **Locations**.
+- **ProductEntries**: Linked with **Products**, **Suppliers**, and **Locations**.
+- **Inventory**: Tracks product quantities at different **Locations**.
+- **Transactions**: Captures various activities like **Purchases**, **Sales**, and **Transfers**.
+- **Adjustments**: Handles manual changes to **Inventory**.
 
-This database model is designed to be robust, scalable, and adaptable for inventory management applications. It can handle complex business operations, maintain data integrity, and ensure efficient management of inventory, suppliers, customers, and transactions.
+This schema provides a solid foundation for your offline-focused IMS system. You can now proceed with building the application using this structure as the backbone of your database. Let me know if you need further customization or help with implementing the application logic!
